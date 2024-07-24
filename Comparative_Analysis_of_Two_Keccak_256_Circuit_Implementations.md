@@ -2,9 +2,9 @@
 
 ### 1. Introduction
 
-Chiquito is a high-level structured language designed for the seamless implementation of zero-knowledge proof applications. It empowers developers to work with elevated and structured abstractions compared to most Zero-Knowledge Proof Domain-Specific Languages (ZKP DSLs), all without compromising performance. Currently, Chiquito boasts a fully integrated backend for Halo2.
+Chiquito is a high-level structured language designed for the seamless implementation of zero-knowledge-proof applications. It empowers developers to work with elevated and structured abstractions compared to most Zero-Knowledge Proof Domain-Specific Languages (ZKP DSLs), all without compromising performance. Currently, Chiquito boasts a fully integrated backend for Halo2.
 
-As known, Halo2 stands as a formidable zero-knowledge proving system, evolving from Halo by transitioning its proof system to Plonk. This strategic shift eliminates the need to redo the trusted setup for each circuit structure. And It ensures scalability through custom gate and lookup table functionalities. Due to its compelling advantages, an increasing number of projects, including several zkEVM initiatives, have adopted Halo2 for circuit development.
+As known, Halo2 stands as a formidable zero-knowledge proving system, evolving from Halo by transitioning its proof system to Plonk. This strategic shift eliminates the need to redo the trusted setup for each circuit structure. It ensures scalability through custom gate and lookup table functionalities. Due to its compelling advantages, an increasing number of projects, including several zkEVM initiatives, have adopted Halo2 for circuit development.
 
 However, despite Halo2's robust capabilities, it may not excel in every aspect as a general-purpose tool. For instance, it poses a significant challenge for newcomers to navigate its intricacies.
 
@@ -17,41 +17,65 @@ Notably, we have successfully implemented a version of the Keccak-256 circuit us
 In our analysis of the circuit structure, we leverage a tool called [plaf](https://github.com/Dhole/polyexen) to facilitate the examination and comparison of the circuit's architecture.
 
 ### 2. What is Keccak?
+
 In the initial section, we provide a concise overview of Keccak in this chapter, covering its definition, operational principles, and the constraints inherent in the Keccak circuit.
+
 #### 2.1 Brief
+
 Keccak stands as a versatile cryptographic function, widely recognized for its role as a hash function. Noteworthy among its features is the ability to process input data of any length and produce output data of any pre-set length. Its mechanism is grounded in a novel approach known as the sponge construction, utilizing a wide random function or random permutation. Derived from prior hash function designs PANAMA and RadioGatún, Keccak finds applications as a hash function, stream cipher, and more. It exhibits resistance against certain types of attacks, such as length extension attacks, while allowing greater flexibility in output length. Its innovative design, exceptional security, and adaptable output length position it as an ideal choice for various cryptographic applications in the rapidly evolving fields of digital currency and blockchain technology. As the cryptocurrency landscape continues to mature, the role of Keccak-256 in ensuring the security, integrity, and functionality of these systems may become increasingly crucial.
 
 SHA-3, released by NIST in 2015, is the latest addition to the Secure Hash Algorithm family, essentially forming a subset of the broader Keccak cryptographic primitive family. Distinguishing itself from SHA-1 and SHA-2 in internal structure, SHA-3 boasts performance benefits. However, it is important to note that Keccak and SHA-3 are distinct entities, as NIST has adjusted the filling algorithm for SHA3, resulting in different outcomes. Sometimes, functions labeled as SHA-3 are actually implemented using Keccak-256, a specific member of the Keccak family that has gained significant attention, especially within various cryptocurrencies such as Ethereum.
 
-Keccak-256 holds a prominent place in the Ethereum blockchain, finding application in multiple contexts. For instance, the Solidity programming language utilizes Keccak-256 for tasks like generating random numbers, compressing input data for signature creation, and deriving account addresses from public keys. In the past, Keccak-256 played a role in Ethereum's proof-of-work mining algorithm. Consequently, some zero-knowledge proof (zkp) projects necessitate verifying the Keccak-256 function within their circuits.
+Keccak-256 holds a prominent place in the Ethereum blockchain, finding applications in multiple contexts. For instance, the Solidity programming language utilizes Keccak-256 for tasks like generating random numbers, compressing input data for signature creation, and deriving account addresses from public keys. In the past, Keccak-256 played a role in Ethereum's proof-of-work mining algorithm. Consequently, some zero-knowledge proof (zkp) projects necessitate verifying the Keccak-256 function within their circuits.
 
 The Keccak-256 function, as a one-way hash function, is intricate, employing a specialized structure known as the sponge structure, comprising two phases: the absorbing phase and the squeezing phase. Both phases involve numerous bitwise operations and repetitive steps. Given the advantage of custom gates and lookup tables in verifying bitwise operations, the Plonkish circuit exhibits significant strengths in verifying the Keccak Hash. This underscores the vast optimization potential and intricate skills involved in utilizing Halo2 for the verification of Keccak circuits, offering numerous best practices for exploration and discussion.
 
 #### 2.2 Algorithm Details
+
 Certainly, let's delve into the concrete implementation steps of the Keccak-256(hereinafter as Keccak) algorithm. First, we'll introduce some key concepts, followed by a detailed description of the algorithm steps. Lastly, we'll outline the circuit design approach.
+
 *Note: The specific data presented here is based on the current implementation of the Keccak-256 circuit and does not represent the entirety of the Keccak algorithm's parameter settings. The parameters are specific to the analyzed circuit structure and may vary with different configurations of the some Keccak algorithm.*
 
 ##### 1. Pre-information
+
 1. Sponge Structure: The Keccak algorithm utilizes a sponge structure, consisting of two main phases: absorbing and squeezing. This structure allows for versatile and secure cryptographic operations.
-2. $Keccak_f[b]$: The permutation function where b, the number of bits of the function's input and output, is 25, 50, 100, 200, 400, 800 or 1600 bits. Sponge construction is based on a wide random function or random permutation. It takes all the outputs of one round, permutes all bits. The width of the permutation is also the width of the state in the sponge construction. 
+
+2. $Keccak_f[b]$: The permutation function where b, the number of bits of the function's input and output, is 25, 50, 100, 200, 400, 800 or 1600 bits. Sponge construction is based on a wide random function or random permutation. It takes all the outputs of one round, permutes all bits. The width of the permutation is also the width of the state in the sponge construction.
+
 3. r: r is the bitrate.
+
 4. c: c is the capacity, it defines the security level of the sponge. r + c =b.
-5. multi-rate padding: The padding algorithm. It also called `pad10*1` pattern, wherein the first bit is set to 1, the last bit is also set to 1, and all intervening bits are set to 0.
-6. data chunk: A data chunk represents a segmented portion of the padded input data, with each chunk measuring r bits.
+
+5. Multi-rate padding: The padding algorithm. It is also called `pad10*1` pattern, wherein the first bit is set to 1, the last bit is also set to 1, and all intervening bits are set to 0.
+
+6. Data chunk: A data chunk represents a segmented portion of the padded input data, with each chunk measuring r bits.
+
 7. Keccak parameters: b=1600, r=1088, c=512.
+
 8. State: The state is organized as an array of 5×5 lanes, each of length w, and b=25w.
+
 ##### 2. Algorithm
+
 The approximate steps of the Keccak algorithm are as follows:
+
 1. Input data of any length.
+
 2. Pre-processing phase
-    1. Perform multi-rate padding.
-    2. Split the padded data.
-3. Sponge structure processing phase.
-    1. Absorbing phase.
-    2. Squeezing phase.
+
+    - Perform multi-rate padding.
+
+    - Split the padded data.
+
+3. Sponge structure processing phase
+    
+    - Absorbing phase.
+
+    - Squeezing phase.
+
 4. Output data of a specific length.
 
 ###### Pre-processing phase
+
 During this phase, our tasks involve padding and splitting the input data.
 
 Firstly, the padding process aims to adjust the length of the input data to be a multiple of a specified chunk length. We achieve this by employing the `pad10*1` pattern.
@@ -59,198 +83,361 @@ Firstly, the padding process aims to adjust the length of the input data to be a
 Subsequently, the padded data undergoes the second task of splitting, where it is divided into multiple sets, with each set representing a data chunk. Each of these chunks, measuring 1088 bits in length, is then sequentially introduced into the sponge structure. This systematic feeding of individual chunks ensures a comprehensive processing of the entire padded data.
 
 ###### Absorbing phase
+
 During this phase, 24 rounds of operations are performed. In each round, the input and output lengths are fixed, and data is fed in chunks. The state is often visualized as a grid of squares, where each square represents a single bit. The state is divided into the bitrate (r) and the capacity (c), with the bitrate length being the same as the chunk length.
+
 1. **Initialization:**
+
     - Start with a fixed-length state, denoted as $S_0$.
+
 2. **Permutation Round Execution:**
+
     - For each round, follow these steps:
         1. Padding: Pad the chunk value $X_i$ with c zeros, creating $X_i || 0^c$.
+
         2. XOR Operation: XOR the padded value with $S_i$, resulting in $S_i' = S_i \oplus (X_i || 0^c)$.
+
         3. Round Function: Perform 24 rounds, involving bit permutation operations in each round.
+
             - Convert the data from $S_i$ to a three-dimensional matrix, where w = 64 and $S_i[w * (5y+x) + z] = a [x] [y] [z]$.
+
             - Apply the following functions:
-                1. Theta Function ($\theta$):
+                - Theta Function ($\theta$):
                     - Do xor operation for the same column values, then do xor operation with the x-1 and x+1 rows' xor operation.
-                    - $\theta: a[x][y][z] = a[x][y][z] \oplus (a[x-1][0][z] \oplus a[x-1][1][z] \oplus a[x-1][2][z] \oplus a[x-1][3][z] \oplus a[x-1][4][z]) \oplus (a[x+1][0][z] \oplus a[x+1][1][z] \oplus a[x+1][2][z] \oplus a[x+1][3][z] \oplus a[x+1][4][z])$
-                2. Rho Function ($\rho$):
+                    - $$\theta: a[x][y][z] = a[x][y][z] \oplus (a[x-1][0][z] \oplus a[x-1][1][z] \oplus a[x-1][2][z] \oplus a[x-1][3][z] \oplus a[x-1][4][z]) \oplus (a[x+1][0][z] \oplus a[x+1][1][z] \oplus a[x+1][2][z] \oplus a[x+1][3][z] \oplus a[x+1][4][z])$$
+
+                - Rho Function ($\rho$):
                     - Shuffle the order of a vector at the same row and column.
-                    - $a[x][y][z] = a[x][y][(z-(t+1)(t+2)/2) \mod 64]$, where $0 \leq t \lt 24$ and $\begin{pmatrix} 0 & 1 \\ 2 & 3 \end{pmatrix} ^t \begin{pmatrix} 0 \\ 1 \end{pmatrix} = \begin{pmatrix} x \\ y \end{pmatrix}$
-                3. Pi Function ($\pi$):
-                    - Permute all vectors $a[x'][y'] = a[x][y]$, where $\begin{pmatrix} x' \\ y' \end{pmatrix} = \begin{pmatrix} 0 & 1 \\ 2 & 3 \end{pmatrix}  \begin{pmatrix} x \\ y \end{pmatrix}$
-                4. Chi Function ($\chi$):
-                    - Shuffle values in a specific manner: $a[x] = a[x] \oplus (\neg a[x+1] \wedge a[x+2])$
-                5. Iota Function ($\iota$):
-                    - Shuffle values in the first row and the first column using round constants: $a[0][0] = a[0][0] \oplus RC[i]$, where RC is the round constants vector.
-    -  Repeat the round function for 24 rounds in the entire permutation phase.
+                    - $$a[x][y][z] = a[x][y][(z-(t+1)(t+2)/2) \mod 64]$$
+                    , where $0 \leq t \lt 24$ 
+                    and $$\begin{pmatrix} 0 & 1 \\ 2 & 3 \end{pmatrix} ^t \begin{pmatrix} 0 \\ 1 \end{pmatrix} = \begin{pmatrix} x \\ y \end{pmatrix}$$
+
+                - Pi Function ($\pi$):
+                    - Permute all vectors $a[x'][y'] = a[x][y]$, where 
+                    $$\begin{pmatrix} x' \\ y' \end{pmatrix} = \begin{pmatrix} 0 & 1 \\ 2 & 3 \end{pmatrix}  \begin{pmatrix} x \\ y \end{pmatrix}$$
+
+                - Chi Function ($\chi$):
+                    - Shuffle values in a specific manner: 
+                    $$a[x] = a[x] \oplus (\neg a[x+1] \wedge a[x+2])$$
+
+                - Iota Function ($\iota$):
+                    - Shuffle values in the first row and the first column using round constants: $$a[0][0] = a[0][0] \oplus RC[i]$$
+                    , where RC is the round constants vector.
+
+    - Repeat the round function for 24 rounds in the entire permutation phase.
 
 ###### Squeezing phase
+
 After the absorbing phase, we start squeezing phase. We need to obtain the initial output $Z_0$ by extracting the first r-length values from $S_{24}$ at this step. 
 
 It's worth mentioning that the output of Keccak-256 is 32 bytes, which can be directly retrieved from $S_{24}$. However, in other algorithms within the Keccak family, if the output length exceeds what can be read from $S_{24}$, the result must be obtained by following the steps outlined below:
 
 - Apply the permutation function.
+
 - Extract the first r-length values in each iteration.
+
 - Append the extracted values to the output, creating $Z_0$.
+
 - Continue this process until the cumulative length satisfies the target length.
 
 This iterative approach ensures that the final output Z contains sufficient data to meet the desired target length.
 
 #### 2.3 Keccak circuit
-Certainly, the Keccak circuit is designed to verify whether a given hash message is the result of the Keccak function applied to specific inputs. Here are some key considerations in the development of the circuit:
-1. **One-Way Function Verification**
-    - Hash functions, including Keccak, are one-way functions, emphasizing the irreversibility of the hashing process.
-2. **Repetitive Steps and Circuit Components**
-    - Many steps in the Keccak algorithm are repetitive. To enhance efficiency, the circuit can be modularized into components, allowing for the repetition of key components. Different circuit code designs may lead to varying levels of efficiency.
-3. **Bitwise Operations and Lookup Tables**
-    - Bitwise operations, such as XOR, are prevalent in the circuit algorithm. While bitwise operations are not inherently circuit-friendly, the use of lookup tables significantly improves the efficiency of these bit operations. Optimizing the circuit for bitwise operations is crucial for performance.
-4. **Plonkish Circuit and Custom Gates**
-    - The intricate steps in the Keccak algorithm align well with the capabilities of custom gates. Plonkish circuits, known for their compatibility with complex operations, have a distinct advantage in Keccak verification. This suggests that there are numerous technical nuances and optimizations that can be employed to enhance the efficiency of the circuit.
-    In summary, the development of the Keccak circuit involves breaking down the algorithm into modular components, optimizing bitwise operations with lookup tables, and leveraging the strengths of custom gates, particularly in the context of Plonkish circuits. Efficient design choices and technical optimizations play a crucial role in ensuring the circuit's effectiveness and performance during the verification process.
 
-Certainly, let's proceed with the analysis of two versions of the Keccak circuit developed beyond Halo2. The first version is based on the direct implementation from the [taiko's zkEVM repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256) using Halo2, and the second version is developed using the [Chiquito](https://github.com/privacy-scaling-explorations/chiquito/pull/89).
+Certainly, the Keccak circuit is designed to verify whether a given hash message is the result of the Keccak function applied to specific inputs. Here are some key considerations in the development of the circuit:
+
+1. **One-Way Function Verification**
+
+    - Hash functions, including Keccak, are one-way functions, emphasizing the irreversibility of the hashing process.
+
+2. **Repetitive Steps and Circuit Components**
+
+    - Many steps in the Keccak algorithm are repetitive. To enhance efficiency, the circuit can be modularized into components, allowing for the repetition of key components. Different circuit code designs may lead to varying levels of efficiency.
+
+3. **Bitwise Operations and Lookup Tables**
+
+    - Bitwise operations, such as XOR, are prevalent in the circuit algorithm. While bitwise operations are not inherently circuit-friendly, the use of lookup tables significantly improves the efficiency of these bit operations. Optimizing the circuit for bitwise operations is crucial for performance.
+
+4. **Plonkish Circuit and Custom Gates**
+
+    - The intricate steps in the Keccak algorithm align well with the capabilities of custom gates. Plonkish circuits, known for their compatibility with complex operations, have a distinct advantage in Keccak verification. This suggests that there are numerous technical nuances and optimizations that can be employed to enhance the efficiency of the circuit.
+
+In summary, the development of the Keccak circuit involves breaking down the algorithm into modular components, optimizing bitwise operations with lookup tables, and leveraging the strengths of custom gates, particularly in the context of Plonkish circuits. Efficient design choices and technical optimizations play a crucial role in ensuring the circuit's effectiveness and performance during the verification process.
+
+Certainly, let's proceed with the analysis of two versions of the Keccak circuit developed beyond Halo2. The first version is based on the direct implementation from the [Taiko's zkEVM repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256) using Halo2, and the second version is developed using the [Chiquito](https://github.com/privacy-scaling-explorations/chiquito/blob/1788d7e7ba4f06e6ba8a4404bd6c43328f7e5e4f/examples/keccak.rs).
+
+
 ### 3. Keccak Circuit from Taiko's Repo (Halo2)
+
 #### 3.1 The step of the Keccak circuit
-This chapter provides an analysis of the Keccak circuits implementation from the [taiko's zkEVM circuit repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256), specifically using the Halo2 library. The circuit size will be evaluated using the analysis tool [plaf](https://github.com/Dhole/polyexen).
+
+This chapter provides an analysis of the Keccak circuits implementation from the [Taiko's zkEVM circuit repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256), specifically using the Halo2 library. The circuit size will be evaluated using the analysis tool [plaf](https://github.com/Dhole/polyexen).
+
 ##### 1. Some tricky solutions
+
 To enhance the efficiency of the Keccak circuit, some clever solutions have been implemented:
+
 1. XOR Operation Optimization
-	Utilizes addition (ADD) operations instead of XOR for arithmetic efficiency. The XOR of two values can be achieved by adding them together, with the result's last bit equivalent to the XOR result.
-	Therefore, when we need to perform XOR operations on multiple bits, we can first add these bit values together and then take the last bit of the result as the XOR operation result.
+
+    Utilizes addition (ADD) operations instead of XOR for arithmetic efficiency. The XOR of two values can be achieved by adding them together, with the result's last bit equivalent to the XOR result.
+
+    Therefore, when we need to perform XOR operations on multiple bits, we can first add these bit values together and then take the last bit of the result as the XOR operation result.
+
 2. Chi Operation Optimization
-	Simplifies the Chi step by introducing a calculation: $r = 3 - 2 \cdot a[x] + a[x+1] - a[x+2]$. If the result is 1 or 2, it sets `a[x]` to 1; otherwise, it sets `a[x]` to 0.
+    
+    Simplifies the Chi step by introducing a calculation: 
+    $$r = 3 - 2 \cdot a[x] + a[x+1] - a[x+2]$$ 
+    If the result is 1 or 2, it sets `a[x]` to 1; otherwise, it sets `a[x]` to 0.
+
 3. Using three bits to represent one bit
-	Due to the optimized computation steps employed during the calculation process, there are situations where multiple values need to be added. In all operations, the maximum is adding five values, and three bits are sufficient to represent it. Therefore, in practice, using three bits to represent one bit makes computation convenient.
+
+    Due to the optimized computation steps employed during the calculation process, there are situations where multiple values need to be added. In all operations, the maximum is adding five values, and three bits are sufficient to represent it. Therefore, in practice, using three bits to represent one bit makes computation convenient.
 
 ##### 2. Execution Steps
-The `multi_keccak` function is designed to verify multiple hashes, and its implementation involves several steps for efficient circuit development. Here's a more concise rephrasing of the key components and phases within the implementation:
+
+The `multi_keccak` function is designed to verify multiple hashes, and its implementation involves several steps for efficient circuit development. Here's a more concise rephrasing of the key components and phases within the implementation.
+
 Each Keccak instance within this function operates on a vector of u8, representing a byte array. The initial steps involve the assignment of rows with a length that is a power of 2. To facilitate this, a null vector's Keccak is introduced to pad the rows.
 
 The implementation steps for the `multi_keccak` function are as follows:
 1. **Input Handling**
+
     - Accepts several vectors of u8 (bytes) as input data.
+
 2. **Row Assignment**
+
     - Assigns rows with a length that is a power of 2 for each vector, setting the row length to 12 for each permutation round.
+
 3. **Padding**
+
     - Adds a null vector Keccak to pad the rows, ensuring uniformity in row lengths.
+
 4. **Individual Processing**
+
     - Iterates through each vector.
     - Calls the `keccak` function for each vector, processing them one by one.
-    This structured approach to input handling, row assignment, padding, and individual processing ensures a systematic and organized execution of the `multi_keccak` function.
+
+ This structured approach to input handling, row assignment, padding, and individual processing ensures a systematic and organized execution of the `multi_keccak` function.
+
 ##### 3. Keccak Processing
+
 The implementation process for each Keccak instance involves several key steps:
+
 1. **Input Processing:**
+
     - Converts the byte vector to a bit vector.
+
     - Pads the input to ensure consistent processing, it uses the `10*1` pattern to pad the bit vector. 
+
 2. **Chunk Division:**
-    - Divides the bit vector into several chunks, each with a length of 1088.
+
+    - Divide the bit vector into several chunks, each with a length of 1088.
+
     - Makes the constraints for the relationship between the input byte array and bits array for each chunk. 
+
     - To reduce space waste, this phase does not allocate separate space to fill this part of the data. Instead, it distributes the space for this part among the 24 rounds of permutation and the squeezing round to minimize resource waste.
+
 3. **State Matrix Initialization (s)**
+
     - Utilizes a two-dimensional vector `s` as a 5 * 5 matrix. 
+
     - Each value in the matrix consists of 64 bits, with each bit extended to 3 bits.  
+
     - This design proves advantageous for subsequent permutation functions.
+
     - It also distributes the space for this part among the 24 rounds of permutation and the squeezing round to minimize resource waste.  
-    - It sets three columns in the cells, one column for 8 byte values, another for the bit array of these 8 byte values, and a third column to check whether the input value is the original input value or a padding value.
+
+    - It sets three columns in the cells, one column for 8-byte values, another for the bit array of these 8-byte values, and a third column to check whether the input value is the original input value or a padding value.
+
 4. **XOR Operation for Input Chunks** 
+
     - Performs XOR for the state matrix `s` with each chunk.
+
     - Executes XOR calculations for each chunk.
+
     - Results are used in the subsequent permutation function.
+
     - Put these 25 initial values, input values, and the results of XOR operations into cells, and establish constraint relationships.
+
     - Splits the XOR result value, as well as the sum of the initial value and the input value, into 64 values and performs XOR operations one by one. To improve efficiency, it utilizes only 16 cells to represent one value.
-    - It sets two columns in the cell to constraint the input (absorb) and two columns to constrain whether the values are padded or not.
+
+    - It sets two columns in the cell to constrain the input (absorb) and two columns to constrain whether the values are padded or not.
+
 5. **Permutation Phase (5 Steps)**
     
     - Utilizes a CellManager to manage 12 rows for each permutation round.
-	- Theta Phase ($\theta$):
-	    1. It calculates or checks each row in the `s` array for the XOR operations, then utilizes a lookup table to obtain the XOR result.
-	    2. In order to enhance efficiency, it employs only 32 cells to represent one value. In total, $32 \times 5 \times 2 = 320$ cells are used.
-	    3. Then, it calculates or checks the new values of the `s` array for the XOR operations, using a lookup table to obtain the XOR result.
-        4. To improve efficiency, it utilizes only 22 cells to represent one value. In total, $22 \times 25 \times 2 = 1100$ cells are used.
+
+    - Theta Phase ($\theta$):
+
+        - It calculates or checks each row in the `s` array for the XOR operations, then utilizes a lookup table to obtain the XOR result.
+
+        - In order to enhance efficiency, it employs only 32 cells to represent one value. In total, $32 \times 5 \times 2 = 320$ cells are used.
+
+        - Then, it calculates or checks the new values of the `s` array for the XOR operations, using a lookup table to obtain the XOR result.
+
+        - To improve efficiency, it utilizes only 22 cells to represent one value. In total, $22 \times 25 \times 2 = 1100$ cells are used.
+
     - Rho Phase($\rho$):
+
         - Shuffles the order of a vector in the same row and column. Here, there is no need to create new cells to constrain this relationship. But since multiple bits are combined in one cell here, an additional 26 cells are needed to separate the data during the bit shifting check.
+
     - Pi Phase($\pi$):
+
         - Changes the order of 25 cells. Here, there is no need to create new cells to constrain this relationship too.
+
     - Chi Phase($\chi$):
+
         - Shuffles values using a specific XOR operation.
+
         - Uses a lookup table to optimize the process too.
+
         - To improve efficiency, it utilizes only 22 cells to represent one value. In total, $22 \times 25 = 550$ cells are used.
+
     - Iota Phase ($\iota$):
+
         - Performs XOR operations for a specific state matrix element.
+
         - Uses a lookup table to optimize the process too.
+
         - To improve efficiency, it utilizes only 16 cells to represent one value. In total, $16 \times 2 = 32$ cells are used.
+
 6.  **RLC**
-	- RLC is used to quickly check the correctness of input and output values. It utilizes an accumulator to cumulatively add the inputs (or outputs).
-	- Using 256 as randomness is akin to arranging all the values in direct sequential order.
-1. **The squeezing phase**
-	
-	*  Following the completion of 24 rounds of permutation operations, the algorithm proceeds to the squeezing phase. In this phase, only an output of a fixed length of 32 bytes is required, so there is no need for a new permutation round. 
-	- Conversely, it needs to convert the output bit vector to a byte vector. Similarly, it is necessary to constrain the relationship between the two. Since the output is 32 bytes, it is only necessary to read the values at four 's' positions.
-	- The squeezing phase efficiently utilizes the existing state and concludes the circuit. 
+
+    - RLC is used to quickly check the correctness of input and output values. It utilizes an accumulator to cumulatively add the inputs (or outputs).
+
+    - Using 256 as randomness is akin to arranging all the values in direct sequential order.
+
+7. **The squeezing phase**
+    
+    - Following the completion of 24 rounds of permutation operations, the algorithm proceeds to the squeezing phase. In this phase, only an output of a fixed length of 32 bytes is required, so there is no need for a new permutation round. 
+
+    - Conversely, it needs to convert the output bit vector to a byte vector. Similarly, it is necessary to constrain the relationship between the two. Since the output is 32 bytes, it is only necessary to read the values at four 's' positions.
+
+    - The squeezing phase efficiently utilizes the existing state and concludes the circuit. 
+
 #### 3.2 Keccak circuit data analysis
+
 We have analyzed the circuit, including the following key points:
-1. **Number of Rows in the Circuits:** Each permutation utilizes 12 rows. For a complete permutation function, i.e., one chunk's operation, it requires 25 * 12 rows.
 
-2. **Number of Columns in the Circuits, Including Witness and Fix columns:** The circuit employs 202 witness columns and 18 fixed columns. In the 202 columns of witness columns, the first 199 columns are used in each round of permutation, while the last three columns are used in the final squeezing phase. Among the 18 fixed columns, the last 10 columns are used for the 5 lookup tables.
+1. **Number of Rows in the Circuits:** 
 
-3. **Number and Size of Lookup Tables:** The circuit utilizes 5 tables, namely normalize_3, normalize_4, normalize_6, chi_base_table, and pack_table.  In total, there are 123 lookup queries(Note that this doesn't imply the entire circuit executes only 123 times, but rather that each row's constraint includes queries approximately 123 times.).
+    Each permutation utilizes 12 rows. For a complete permutation function, i.e., one chunk's operation, it requires 25 * 12 rows.
 
-4. **Number of Constraints:** There are 164 constraints at each row(Note that this also doesn't mean the entire circuit contains only 164 constraints).
+2. **Number of Columns in the Circuits, Including Witness and Fix columns:** 
 
-5. **Idle cells in witness columns:** Firstly, each round occupies 12 rows and 202 columns. Except for the last four columns, each round has 2170 witnesses and 218 idle cells. In the last four columns, they are only utilized in the final four rounds, with the preceding 20 rounds being idle, and within these final four rounds, only 32 cells are used, leaving 16 cells idle. In the final squeezing stage, also occupying 12 rows, only the first 13 columns are utilized, with the last three columns each having 4 idle cells, totally 144 witnesses while the remaining 189 columns are all idle.
+    The circuit employs 202 witness columns and 18 fixed columns. In the 202 columns of witness columns, the first 199 columns are used in each round of permutation, while the last three columns are used in the final squeezing phase. Among the 18 fixed columns, the last 10 columns are used for the 5 lookup tables.
 
-   
+3. **Number and Size of Lookup Tables:** 
+
+    The circuit utilizes 5 tables, namely normalize_3, normalize_4, normalize_6, chi_base_table, and pack_table.  In total, there are 123 lookup queries(Note that this doesn't imply the entire circuit executes only 123 times, but rather that each row's constraint includes queries approximately 123 times.).
+
+4. **Number of Constraints:** 
+
+    There are 164 constraints at each row(Note that this also doesn't mean the entire circuit contains only 164 constraints).
+
+5. **Idle cells in witness columns:** 
+
+    Firstly, each round occupies 12 rows and 202 columns. Except for the last four columns, each round has 2170 witnesses and 218 idle cells. In the last four columns, they are only utilized in the final four rounds, with the preceding 20 rounds being idle, and within these final four rounds, only 32 cells are used, leaving 16 cells idle. In the final squeezing stage, also occupying 12 rows, only the first 13 columns are utilized, with the last three columns each having 4 idle cells, a total of 144 witnesses while the remaining 189 columns are all idle.
+
 
 ### 4. Keccak-256 Circuit Beyond Halo2 using Chiquito
-The chapter will describe the Keccak circuit implementation from Chiquito example, and analysis the circuit size by the analysis tool [plaf](https://github.com/Dhole/polyexen) too.
+
+The chapter will describe the Keccak circuit implementation from the Chiquito example, and analyze the circuit size by the analysis tool [plaf](https://github.com/Dhole/polyexen) too.
+
 #### 4.1 The step of the Keccak circuit
+
 ##### 1. Chiquito's feature
-In Chiquito, several features contribute to the advantages in circuit development and optimization:
+
+In Chiquito, several features contribute to the advantages of circuit development and optimization:
 
 1. **Step Concept**
    - The concept of "Step" is introduced through the `step_type_def` function.
+
     - This function adds constraints to a step type and defines witness generation.
+
     - Repeated calls to the same `step_type_def` function enable the definition of a single round for the permutation function, which can be reused multiple times.
+
 2. **Selector Optimization**
+
    - [An important optimization](https://github.com/privacy-scaling-explorations/chiquito/blob/main/src/plonkish/compiler/step_selector.rs#L192-L247) in the selector is that the number of selectors becomes O(log n).
-    - When it requires a large number of selectors, Chiquito employs a optimization to reduce the number of selectors to O(log n).
+
+    - When it requires a large number of selectors, Chiquito employs an optimization to reduce the number of selectors to O(log n).
+
 3. **Row Size Collapse**
+
    - By default, each step is placed in a single row, resulting in potentially long rows.
+
     - Chiquito provides a [method](https://github.com/privacy-scaling-explorations/chiquito/blob/802615f734eb8cbf2e11c7a3716bc017e92488fa/src/plonkish/compiler/cell_manager.rs#L233-L366) to split a row into multiple rows, allowing for flexibility in defining the size of a row.
+
 4. **Cell Number Optimization**
    
-    - Each step initially takes over one row, leading to equal the number of cells for all steps, even with some cells being unused.
+    - Each step initially takes over one row, leading to an equal number of cells for all steps, even with some cells being unused.
+
     - To minimize the number of unused cells, attention is given to optimizing the size of all steps.
+
 5. **Different Steps and Signal Types**
+
    - Chiquito divides all witness columns into two types: forward signal and internal signal.
+
     - Forward signals can be passed between different steps, while internal signals are used within a step.
+
     - This differentiation provides a convenient way to constrain the relationships between values in different steps.
-    - Due to the constraint structure, it is quite difficult to write some constraints where same columns for different steps. The internal signal provides the convenient way. It encapsulates the implementation of the algorithm so that users do not have to worry about the specific writing of constraints. Users can directly define different constraint relationships on the same column at different steps, which to some extent reduces the waste of cell space.
+
+    - Due to the constraint structure, it is quite difficult to write some constraints where the same columns for different steps. The internal signal provides the convenient way. It encapsulates the implementation of the algorithm so that users do not have to worry about the specific writing of constraints. Users can directly define different constraint relationships on the same column at different steps, which to some extent reduces the waste of cell space.
+
 ##### 2. Keccak Processing
+
 Different from the Taiko version, there is no multi-verification version in this implementation as combined calculations are not optimized for the circuits themselves. 
 
 Similar to the Taiko version,  the process involves splitting the bit vector into several chunks, each with a length of 1088(1088 = 17 * 8 * 8). Each chunk uses a two-dimensional vector `s` to hold values in a 5 * 5 matrix. Each value in this matrix consists of 64 bits, extended to 3 bits for advantageous design in the subsequent permutation function.
 
-  The Steps is split into two components: the first is the XOR operation for the input chunk, and the second is the 24 rounds of the permutation function.
+The Steps are split into two components: the first is the XOR operation for the input chunk, and the second is the 24 rounds of the permutation function.
+
 1. **XOR Operation for Input Chunk**
-	  - 17 XOR calculations are performed for the input chunk.
-	  - Makes the constraints for the relationship between the input byte array and bits array for each chunk. 
+
+      - 17 XOR calculations are performed for the input chunk.
+
+      - Makes the constraints for the relationship between the input byte array and bits array for each chunk. 
+
 2. **Permutation Phase**
-	  - A step named `keccak_one_round` is defined to check one round of the permutation function. 
-	  - Due to the features of Chiquito, this step achieve similar outcomes to the permutation steps in the taiko version but with some differences.
-	  - XOR and Chi operations continue to require the splitting of one value into 64 values. To improve efficiency, it utilizes less cells to represent one value too.
-	  - Due to the fact that each round of permutation is implemented in a single step here, with its constraints distributed along the same row, it effectively reduces a significant amount of idle circuit units.
+
+      - A step named `keccak_one_round` is defined to check one round of the permutation function. 
+
+      - Due to the features of Chiquito, this step achieves similar outcomes to the permutation steps in the taiko version but with some differences.
+
+      - XOR and Chi operations continue to require the splitting of one value into 64 values. To improve efficiency, it utilizes fewer cells to represent one value too.
+
+      - Due to the fact that each round of permutation is implemented in a single step here, with its constraints distributed along the same row, it effectively reduces a significant amount of idle circuit units.
+
 3.  **The squeezing phase**
-	1. It only needs 90 cells for the squeezing phase.
-	2. In order to reduce the circuit. It allocate cells in the last permutation phase, rather than allocate several new rows for the squeezing phase.
+
+    1. It only needs 90 cells for the squeezing phase.
+
+    2. To reduce the circuit. It allocates cells in the last permutation phase, rather than allocate several new rows for the squeezing phase.
+
 #### 4.2 Keccak circuit data analysis
 
 We have analyzed the circuit, including the following key points:
 
-1. **Number of Rows in the Circuits:** Initially, each step occupies only one row. For each chunk, which involves preprocessing steps and 24 rounds of permutation, the folded version occupies approximately 11 rows when assuming a custom column width of 202.
-2. **Number of Columns in the Circuits, Including Witness and Fix columns:** Chiquito offers the flexibility to customize the witness column width. we set 202 custom columns in the folded version including 4 columns(In order to get the same column number with taiko's version) . There are 21 fixed columns, with 15 of them utilized for 5 lookup tables.
-3. **Number and Size of Lookup Tables:** 5 lookup tables are employed respectively, 5 tables are similar to the previous version. In total, there are 3130 lookup queries.
-4. **Number of Constraints:** There are 1742 distinct constraints in total.
-5. **Idle cells in witness columns:** In the Chiquito version, it's divided into two parts: preprocessing and permutation stages (where the squeezing stage is also merged into the final permutation stage). Each round (including preprocessing) occupies 11 rows and 202 columns, except for the last 4 columns for the selector. In the preprocessing stage, there are a total of 591 witnesses, leaving 1587 idle cells. In the permutation stage, except for the last round, there are 2074 witnesses and 104 idle cells remaining. In the final permutation round, there are 2163 witnesses and only 15 idle cells left.
+1. **Number of Rows in the Circuits:** 
+
+    Initially, each step occupies only one row. For each chunk, which involves preprocessing steps and 24 rounds of permutation, the folded version occupies approximately 11 rows when assuming a custom column width of 202.
+
+2. **Number of Columns in the Circuits, Including Witness and Fix columns:** 
+
+    Chiquito offers the flexibility to customize the witness column width. we set 202 custom columns in the folded version including 4 columns(In order to get the same column number as Taiko's version) . There are 21 fixed columns, with 15 of them utilized for 5 lookup tables.
+
+3. **Number and Size of Lookup Tables:** 
+
+    5 lookup tables are employed respectively, 5 tables are similar to the previous version. In total, there are 3130 lookup queries.
+
+4. **Number of Constraints:** 
+
+    There are 1742 distinct constraints in total.
+
+5. **Idle cells in witness columns:** 
+
+    In the Chiquito version, it's divided into two parts: preprocessing and permutation stages (where the squeezing stage is also merged into the final permutation stage). Each round (including preprocessing) occupies 11 rows and 202 columns, except for the last 4 columns for the selector. In the preprocessing stage, there are a total of 591 witnesses, leaving 1587 idle cells. In the permutation stage, except for the last round, there are 2074 witnesses and 104 idle cells remaining. In the final permutation round, there are 2163 witnesses and only 15 idle cells left.
 
 ### 5. Compare the difference
 
@@ -264,11 +451,12 @@ First, let's begin by delineating some design differences between the two.
 |-----|---------|-------|----------|-----------|
 |1 | signal/multi keccak|multi | single| Simultaneously processing multiple inputs doesn't bring significant circuit optimizations for each vector of inputs. So in this document, we only compare the implementation of single-instance Keccak hashing. |
 |2 |Squeezing phase| Yes | No | The step in Chiquito allows us to place the final squeeze step in the last permutation phase. |
-|3 |Proprocessing phase| No | Yes | In the Taiko version, some processing of inputs is distributed across various permutation rounds, while in Chiquito, a dedicated step is allocated to handle input values. |
-|4 |Selector Optimization | No | Yes | Chiquito can employ a optimization to reduce the number of selectors to O(log n) if necessary. |
-|5 |Customize the Column Number | No | Yes |Chiquito provides a method, allowing for flexibility in defining the width of a row.|
-|6 |Customize the Row Number | Yes | No |The number of rows occupied by each round in Chiquito is determined based on the line width after row folding. Taiko version supports tuning the number of rows per round.|
+|3 |Proprocessing phase| No | Yes | In the Taiko version, some processing of inputs are distributed across various permutation rounds, while in Chiquito, a dedicated step is allocated to handle input values. |
+|4 |Selector Optimization | No | Yes | Chiquito can employ optimization to reduce the number of selectors to O(log n) if necessary. |
+|5 |Customize the Column Number | No | Yes |Chiquito provides a method, that allows for flexibility in defining the width of a row.|
+|6 |Customize the Row Number | Yes | No |The number of rows occupied by each round in Chiquito is determined based on the line width after row folding. The Taiko version supports tuning the number of rows per round.|
 |7 |Lines of code | 2246 | 2323 |-|
+
 
 #### 5.2 Compare key parameters
 
@@ -296,7 +484,7 @@ In the Chiquito version, each step originally occupied one line and was then spl
 
 ##### 5.2.2 Expression and Degree
 
-Due to differences in design details, there is a variation in the expression degree between the Chiquito version and the Taiko version. The Chiquito version has a higher expression degree primarily because it incorporates a selector optimization feature. In the examples, we require three fixed columns('q_enable', 'q_first', 'q_last') of advice as selectors. Additionally, there are three fundamental columns that need to be used for one or two columns in each expression. As a result, the Chiquito version requires the use of one more columns. Moreover, the expressions in Lookups also necessitate two more columns (one for the 'q_enable' column and another for one the four columns of advice used as step selector) in certain expressions.
+Due to differences in design details, there is a variation in the expression degree between the Chiquito version and the Taiko version. The Chiquito version has a higher expression degree primarily because it incorporates a selector optimization feature. In the examples, we require three fixed columns('q_enable', 'q_first', 'q_last') of advice as selectors. Additionally, there are three fundamental columns that need to be used for one or two columns in each expression. As a result, the Chiquito version requires the use of one more column. Moreover, the expressions in Lookups also necessitate two more columns (one for the 'q_enable' column and another for one of the four columns of advice used as step selector) in certain expressions.
 
 ##### 5.2.3 Number of Constraints
 
@@ -312,7 +500,7 @@ Lastly, it's crucial to note that although we've determined Chiquito requires mo
 
 ##### 5.2.4 Rotations 
 
-For Chiquito version, "Rotations" is utilized across a total of 202 columns of Advice, with each column undergoing rotations ranging from 9 to 12 times, with values ranging between 0 and 11.
+For the Chiquito version, "Rotations" is utilized across a total of 202 columns of Advice, with each column undergoing rotations ranging from 9 to 12 times, with values ranging between 0 and 11.
 
 | Advice Columns                                               | Rotation                              |
 | ------------------------------------------------------------ | ------------------------------------- |
@@ -321,7 +509,7 @@ For Chiquito version, "Rotations" is utilized across a total of 202 columns of A
 | 183, 184, 185, 186,  187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197 | 0, 1, 2,  3, 4, 5, 6, 7, 8, 9         |
 | 198, 199, 200, 201                                           | 0                                     |
 
-The Taiko version is a bit more complex. Here is a data summary regarding the utilization of Rotations about advice columns. The first columns is the index of advice columns, and the second columns is about the rotations used at these columns.
+The Taiko version is a bit more complex. Here is a data summary regarding the utilization of Rotations about advice columns. The first column is the index of advice columns, and the second column is about the rotations used in these columns.
 
 | Advice Columns | Rotation |
 | :------------- | -------- |
@@ -349,19 +537,30 @@ Here is a data summary regarding the utilization of Rotations about fixed column
 |              | 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | 0                                               |
 | Chiquito     | 0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 20    | 0                                               |
 
+
 The difference in the "Rotations" presentation between the Chiquito and Taiko versions can be attributed to their respective approaches. In the Chiquito version, all witnesses within the same step are flattened into a single row, which is then divided into multiple rows. On the other hand, Taiko pre-allocates the determined rows for each step and sequentially arranges witnesses in columns, resulting in a somewhat cluttered appearance. Additionally, in the Taiko version, some initial and final steps are distributed across various smaller steps for optimization purposes, which leads to larger spans of Rotations.
+
 Both versions occupy multiple consecutive rows in each round of computation, but the arrangement differs. This is due to Chiquito initially allocating all cells within a step to one row, before folding them. However, compared to the other version, Chiquito's version has fewer idle cells and a higher utilization rate of cells. 
 
 ### 6. Conclusion
+
 In conclusion, it is evident that developing circuits directly on halo2 is more native and straightforward. On the other hand, Chiquito, as an additional DSL layer, can theoretically implement all optimization strategies present in native circuits and offers code with enhanced readability. Moreover, Chiquito provides a simpler development interface and incorporates features such as selector optimization, row size collapse, and more. These inherent features in Chiquito significantly contribute to reducing development complexity.
 
 ### References
 
-* https://github.com/privacy-scaling-explorations/chiquito/pull/89
+* https://github.com/privacy-scaling-explorations/chiquito/tree/1788d7e7ba4f06e6ba8a4404bd6c43328f7e5e4f
+
 * https://github.com/taikoxyz/zkevm-circuits
+
 * https://wiki.rugdoc.io/docs/introduction-to-ethereums-keccak-256-algorithm/
+
 * https://www.linkedin.com/pulse/understanding-keccak256-cryptographic-hash-function-soares-m-sc-/
+
 * https://keccak.team/keccak.html
+
 * https://zhuanlan.zhihu.com/p/624827562
+
 * https://github.com/Dhole/polyexen
+
 * https://en.wikipedia.org/wiki/SHA-3
+
