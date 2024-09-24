@@ -1,8 +1,12 @@
 # Comparative Analysis of Two Keccak-256 Circuit Implementations
 
+[TOC]
+
+
+
 ### 1. Introduction
 
-Chiquito is a high-level structured language designed for the seamless implementation of zero-knowledge-proof applications. It empowers developers to work with elevated and structured abstractions compared to most Zero-Knowledge Proof Domain-Specific Languages (ZKP DSLs), all without compromising performance. Currently, Chiquito boasts a fully integrated backend for Halo2.
+Chiquito is a high-level structured language designed for the seamless implementation of zero-knowledge-proof applications. It empowers developers to work with elevated and structured abstractions compared to most Zero-Knowledge Proof Domain-Specific Languages (ZKP DSLs), all without compromising performance. Currently, it has integrated Halo2.
 
 As known, Halo2 stands as a formidable zero-knowledge proving system, evolving from Halo by transitioning its proof system to Plonk. This strategic shift eliminates the need to redo the trusted setup for each circuit structure. It ensures scalability through custom gate and lookup table functionalities. Due to its compelling advantages, an increasing number of projects, including several zkEVM initiatives, have adopted Halo2 for circuit development.
 
@@ -12,15 +16,85 @@ Chiquito can serve as a complementary tool that addresses some of the challenges
 
 Furthermore, Chiquito introduces features that aid in optimizing circuit size, enhancing the overall efficiency of the development process. An illustrative example of this is the implementation of a Keccak-256 circuit, where Chiquito-based implementation demonstrates notable advantages.
 
-Notably, we have successfully implemented a version of the Keccak-256 circuit using Chiquito. Simultaneously, a version of the  Keccak-256 circuit exists in the zkEVM circuit repository from [Taiko](https://github.com/taikoxyz/zkevm-circuits). This document aims to leverage the  Keccak-256 circuit as a case study, providing a comprehensive analysis and comparison of the strengths and weaknesses inherent in building circuits with Chiquito versus the native Halo2 approach. We selected the Taiko version for comparison because it stands out as the most efficiently implemented Keccak-256 circuit code based on Halo2 that we could find.
+Notably, we have successfully implemented a version of the Keccak-256 circuit using Chiquito. Simultaneously, a version of the Keccak-256 circuit exists in the zkEVM circuit repository from [Taiko](https://github.com/taikoxyz/zkevm-circuits). This document aims to leverage the  Keccak-256 circuit as a case study, providing a comprehensive analysis and comparison of the strengths and weaknesses inherent in building circuits with Chiquito versus the native Halo2 approach. We selected the Taiko version for comparison because it stands out as the most efficiently implemented Keccak-256 circuit code based on Halo2 that we could find.
 
 In our analysis of the circuit structure, we leverage a tool called [plaf](https://github.com/Dhole/polyexen) to facilitate the examination and comparison of the circuit's architecture.
 
-### 2. What is Keccak?
+
+
+### 2. What is Chiquito
+
+Chiquito is a flexible DSL (Domain Specific Language) designed to facilitate the creation and optimization of zero-knowledge proof (ZKP) circuits. The core idea behind Chiquito is that every zero-knowledge proof represents a program, and like any program, it can consist of multiple computations, forming what is known as the trace. These computations are verified against specific inputs, outputs, and intermediate values, collectively referred to as the witness.
+
+This section dives into the key aspects of Chiquito’s design, architecture, and its distinct features that make it a powerful tool for ZKP circuit development.
+
+#### 2.1 Step and Circuit
+
+At the heart of Chiquito is the concept of a step. The main structured abstraction in Chiquito is this idea of breaking down computations into individual steps. Any program or computation can be divided into these small steps, each representing a discrete piece of the overall computation. A Chiquito program is represented by a circuit that consists of one or many step types. These step types represent specific kinds of computation that occur within the circuit.
+
+Chiquito’s approach to structuring circuits allows for automatic padding, which helps handle varying input sizes and ensures the program runs smoothly even if inputs aren’t perfectly aligned. The circuit is the functional representation of a program, and multiple circuits can be combined into a super circuit. This hierarchical structure makes Chiquito highly adaptable for more complex applications, where smaller circuits need to be combined into larger, more powerful ones.
+
+The step structure makes Chiquito particularly well-suited for establishing state machine transitions, facilitating the handling of dynamic state changes in a clear and organized manner. State machines are foundational in many computational processes, where the system transitions between different states based on inputs and current conditions. Chiquito’s step-based architecture inherently accommodates these state transitions by allowing developers to define each step as a state in the machine. This means that transitioning from one step to another can be managed effectively, ensuring that each state change is tracked and validated within the computation.
+
+A particular computation, such as a hash function or arithmetic operation, is represented by a series of step. Each step instance can appear in any arbitrary order within the circuit, and this flexibility allows for greater control over how computations are structured and executed. By treating each step as a potential state, developers can easily implement and manage complex state machine logic, making Chiquito a powerful tool for applications requiring dynamic state management.
+
+By decomposing complex computations into smaller steps, Chiquito allows for easier testing, debugging, and optimization of circuits, all while supporting the intricate requirements of state machine transitions.
+
+#### 2.2 Signal, Trace-Based Witness Generation
+
+One of the critical challenges in zero-knowledge proofs is generating and managing witnesses. A witness is essentially the set of intermediate values generated during a computation. These values, specific inputs, outputs, and intermediate values, are not directly exposed but are necessary to verify the correctness of the computation without revealing sensitive information.
+
+In Chiquito, what needs to be proved by zero-knowledge proof represents a program, and like any program, it can consist of multiple computations, forming what is known as the trace. Signals serve as the building blocks of a trace-based witness generation system. Signals are data points or values that are used or produced at various stages of the computation. 
+
+One of the beauty point of Chiquito’s approach lies in its ability to expose these signals as public inputs or outputs in a seamless and efficient manner.
+
+For example, in a hash computation, certain intermediate values might need to be exposed as public signals, while others remain hidden. Chiquito makes it easy to define which signals should be public and which should remain private. This is especially useful in privacy-preserving applications, where selective disclosure of information is crucial.
+
+By managing signals effectively, Chiquito ensures that the witness generation process is traceable, reliable, and well-optimized for ZKP circuits. It simplifies the complex task of ensuring that all intermediate values are consistent and correct throughout the computation.
+
+#### 2.3 Expression
+
+In Chiquito, each signal represents a data point, and these signals can be combined through expressions to represent complex operations and constraints within the circuit. The use of expressions is integral to Chiquito’s constraint structure, as it allows developers to clearly define how different signals interact and impose rules on their relationships. By leveraging this structure, developers can create intricate relationships between different signals, facilitating sophisticated logic implementation.
+
+Chiquito provides a versatile platform for circuit design, supporting both arithmetic and boolean expressions. This dual capability enables developers to compile any boolean expression into state machine transitions, fulfilling the requirements for complex computations while also accommodating the dynamic behaviors inherent in circuit design.
+
+Moreover, Chiquito allows developers to define more complex operations and constraints in their circuits, expanding the range of computations that can be effectively modeled. This flexibility is crucial for building advanced applications that require intricate logic and data handling.
+
+Chiquito 2024 also implements [Common Subexpression Elimination (CSE)](https://github.com/privacy-scaling-explorations/Chiquito/pull/239), a vital optimization technique that identifies instances of identical expressions within the circuit. By analyzing whether these duplicate expressions can be replaced with a single variable that holds the computed value, CSE helps reduce the overall size of the circuit and enhances its efficiency. This optimization is particularly important in large-scale zero-knowledge proof (ZKP) applications, where performance is critical, as it leads to a more streamlined and faster computation process.
+
+In summary, the integration of expressions within Chiquito’s constraint structure not only facilitates the organization of complex logical relationships but also enhances the overall efficiency and flexibility of circuit design, empowering developers to create robust and scalable zero-knowledge proof systems.
+
+#### 2.4 Lookup Tables
+
+Lookup tables are an essential feature in ZKP circuit design, especially for Plonk. They allow circuits to reference precomputed values, reducing the need to recompute the same values repeatedly. This significantly improves both performance and efficiency in complex circuits.
+
+However, many existing DSLs for ZKP circuit design do not yet support lookup tables natively. Chiquito, on the other hand, fully supports the use of lookup tables, providing a powerful tool for developers. By allowing circuits to refer to precomputed values, Chiquito makes it easier to design circuits that require fewer constraints and are more efficient in terms of computation.
+
+For instance, in a Keccak circuit, certain constants or precomputed values might be reused across different steps. With lookup tables, these values can be stored once and referenced as needed, rather than recalculated each time. This not only reduces the complexity of the circuit but also improves its performance. Furthermore, the use of lookup tables simplifies many constraints that would otherwise require complex arithmetic expressions to represent. By allowing developers to define these relationships in a more straightforward manner, lookup tables make it easier to implement intricate logic without the overhead of extensive calculations. This leads to clearer and more maintainable code, enabling quicker iterations and optimizations during the development process.
+
+#### 2.5 Versatility: Writing Circuits in Multiple Languages
+
+One of Chiquito’s most powerful features is its versatility. The platform is designed to be fully modular, allowing developers to write circuits in multiple languages and use different proving systems. This flexibility means that Chiquito can be adapted to different environments and use cases, depending on the needs of the developer or the application.
+
+For example, a developer might write part of a ZKP circuit in one language and another part in a different language, including python and Rust. Chiquito allows these different parts to be integrated seamlessly into a single circuit, making it a versatile tool for a wide range of ZKP applications.
+
+Additionally, Chiquito supports multiple backend proving systems, meaning that developers are not locked into using a specific proof system. Whether you're using Halo2, HyperPlonk or even CCS, Chiquito allows you to choose the best backend for your particular use case. This level of flexibility is essential in an ever-evolving field like zero-knowledge proofs, where different proving systems have different strengths and weaknesses.
+
+#### 2.6 Why Chiquito?
+
+Chiquito focus on simplicity, flexibility, and performance optimization. It offers a highly structured approach to building circuits, with features like automatic padding, signal management, and expression optimization. These features not only make it easier to develop ZKP circuits but also ensure that the circuits are as efficient and scalable as possible.
+
+For developers working on complex ZKP applications, Chiquito provides the tools and abstractions needed to manage the complexity of large circuits while maintaining performance and flexibility. Its support for lookup tables and modular circuit design makes it a forward-thinking tool in the rapidly advancing field of zero-knowledge proofs.
+
+In summary, Chiquito is a powerful DSL that simplifies the development of ZKP circuits. Its structured approach, combined with advanced features like subexpression elimination and lookup tables, provides developers with a flexible and efficient platform for building circuits. With its modularity and support for multiple proving systems, Chiquito is poised to play a key role in the future of privacy-preserving computations.
+
+
+
+### 3. What is Keccak?
 
 In the initial section, we provide a concise overview of Keccak in this chapter, covering its definition, operational principles, and the constraints inherent in the Keccak circuit.
 
-#### 2.1 Brief
+#### 3.1 Brief
 
 Keccak stands as a versatile cryptographic function, widely recognized for its role as a hash function. Noteworthy among its features is the ability to process input data of any length and produce output data of any pre-set length. Its mechanism is grounded in a novel approach known as the sponge construction, utilizing a wide random function or random permutation. Derived from prior hash function designs PANAMA and RadioGatún, Keccak finds applications as a hash function, stream cipher, and more. It exhibits resistance against certain types of attacks, such as length extension attacks, while allowing greater flexibility in output length. Its innovative design, exceptional security, and adaptable output length position it as an ideal choice for various cryptographic applications in the rapidly evolving fields of digital currency and blockchain technology. As the cryptocurrency landscape continues to mature, the role of Keccak-256 in ensuring the security, integrity, and functionality of these systems may become increasingly crucial.
 
@@ -30,7 +104,7 @@ Keccak-256 holds a prominent place in the Ethereum blockchain, finding applicati
 
 The Keccak-256 function, as a one-way hash function, is intricate, employing a specialized structure known as the sponge structure, comprising two phases: the absorbing phase and the squeezing phase. Both phases involve numerous bitwise operations and repetitive steps. Given the advantage of custom gates and lookup tables in verifying bitwise operations, the Plonkish circuit exhibits significant strengths in verifying the Keccak Hash. This underscores the vast optimization potential and intricate skills involved in utilizing Halo2 for the verification of Keccak circuits, offering numerous best practices for exploration and discussion.
 
-#### 2.2 Algorithm Details
+#### 3.2 Algorithm Details
 
 Certainly, let's delve into the concrete implementation steps of the Keccak-256(hereinafter as Keccak) algorithm. First, we'll introduce some key concepts, followed by a detailed description of the algorithm steps. Lastly, we'll outline the circuit design approach.
 
@@ -67,7 +141,7 @@ The approximate steps of the Keccak algorithm are as follows:
     - Split the padded data.
 
 3. Sponge structure processing phase
-    
+   
     - Absorbing phase.
 
     - Squeezing phase.
@@ -142,7 +216,7 @@ It's worth mentioning that the output of Keccak-256 is 32 bytes, which can be di
 
 This iterative approach ensures that the final output Z contains sufficient data to meet the desired target length.
 
-#### 2.3 Keccak circuit
+#### 3.3 Keccak circuit
 
 Certainly, the Keccak circuit is designed to verify whether a given hash message is the result of the Keccak function applied to specific inputs. Here are some key considerations in the development of the circuit:
 
@@ -164,12 +238,12 @@ Certainly, the Keccak circuit is designed to verify whether a given hash message
 
 In summary, the development of the Keccak circuit involves breaking down the algorithm into modular components, optimizing bitwise operations with lookup tables, and leveraging the strengths of custom gates, particularly in the context of Plonkish circuits. Efficient design choices and technical optimizations play a crucial role in ensuring the circuit's effectiveness and performance during the verification process.
 
-Certainly, let's proceed with the analysis of two versions of the Keccak circuit developed beyond Halo2. The first version is based on the direct implementation from the [Taiko's zkEVM repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256) using Halo2, and the second version is developed using the [Chiquito](https://github.com/privacy-scaling-explorations/chiquito/blob/1788d7e7ba4f06e6ba8a4404bd6c43328f7e5e4f/examples/keccak.rs).
+Certainly, let's proceed with the analysis of two versions of the Keccak circuit developed beyond Halo2. The first version is based on the direct implementation from the [Taiko's zkEVM repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256) using Halo2, and the second version is developed using the [Chiquito](https://github.com/privacy-scaling-explorations/Chiquito/blob/1788d7e7ba4f06e6ba8a4404bd6c43328f7e5e4f/examples/keccak.rs).
 
 
-### 3. Keccak Circuit from Taiko's Repo (Halo2)
+### 4. Keccak Circuit from Taiko's Repo (Halo2)
 
-#### 3.1 The step of the Keccak circuit
+#### 4.1 The step of the Keccak circuit
 
 This chapter provides an analysis of the Keccak circuits implementation from the [Taiko's zkEVM circuit repository](https://github.com/taikoxyz/zkevm-circuits/tree/7f750aad7b10f0cd7f4eb8f593efaa0bf02e07ff/keccak256), specifically using the Halo2 library. The circuit size will be evaluated using the analysis tool [plaf](https://github.com/Dhole/polyexen).
 
@@ -184,7 +258,7 @@ To enhance the efficiency of the Keccak circuit, some clever solutions have been
     Therefore, when we need to perform XOR operations on multiple bits, we can first add these bit values together and then take the last bit of the result as the XOR operation result.
 
 2. Chi Operation Optimization
-    
+   
     Simplifies the Chi step by introducing a calculation: 
     $$r = 3 - 2 \cdot a[x] + a[x+1] - a[x+2]$$ 
     If the result is 1 or 2, it sets `a[x]` to 1; otherwise, it sets `a[x]` to 0.
@@ -264,7 +338,7 @@ The implementation process for each Keccak instance involves several key steps:
     - It sets two columns in the cell to constrain the input (absorb) and two columns to constrain whether the values are padded or not.
 
 5. **Permutation Phase (5 Steps)**
-    
+   
     - Utilizes a CellManager to manage 12 rows for each permutation round.
 
     - Theta Phase ($\theta$):
@@ -308,14 +382,14 @@ The implementation process for each Keccak instance involves several key steps:
     - Using 256 as randomness is akin to arranging all the values in direct sequential order.
 
 7. **The squeezing phase**
-    
+   
     - Following the completion of 24 rounds of permutation operations, the algorithm proceeds to the squeezing phase. In this phase, only an output of a fixed length of 32 bytes is required, so there is no need for a new permutation round. 
 
     - Conversely, it needs to convert the output bit vector to a byte vector. Similarly, it is necessary to constrain the relationship between the two. Since the output is 32 bytes, it is only necessary to read the values at four 's' positions.
 
     - The squeezing phase efficiently utilizes the existing state and concludes the circuit. 
 
-#### 3.2 Keccak circuit data analysis
+#### 4.2 Keccak circuit data analysis
 
 We have analyzed the circuit, including the following key points:
 
@@ -340,11 +414,11 @@ We have analyzed the circuit, including the following key points:
     Firstly, each round occupies 12 rows and 202 columns. Except for the last four columns, each round has 2170 witnesses and 218 idle cells. In the last four columns, they are only utilized in the final four rounds, with the preceding 20 rounds being idle, and within these final four rounds, only 32 cells are used, leaving 16 cells idle. In the final squeezing stage, also occupying 12 rows, only the first 13 columns are utilized, with the last three columns each having 4 idle cells, a total of 144 witnesses while the remaining 189 columns are all idle.
 
 
-### 4. Keccak-256 Circuit Beyond Halo2 using Chiquito
+### 5. Keccak-256 Circuit Beyond Halo2 using Chiquito
 
 The chapter will describe the Keccak circuit implementation from the Chiquito example, and analyze the circuit size by the analysis tool [plaf](https://github.com/Dhole/polyexen) too.
 
-#### 4.1 The step of the Keccak circuit
+#### 5.1 The step of the Keccak circuit
 
 ##### 1. Chiquito's feature
 
@@ -359,7 +433,7 @@ In Chiquito, several features contribute to the advantages of circuit developmen
 
 2. **Selector Optimization**
 
-   - [An important optimization](https://github.com/privacy-scaling-explorations/chiquito/blob/main/src/plonkish/compiler/step_selector.rs#L192-L247) in the selector is that the number of selectors becomes O(log n).
+   - [An important optimization](https://github.com/privacy-scaling-explorations/Chiquito/blob/main/src/plonkish/compiler/step_selector.rs#L192-L247) in the selector is that the number of selectors becomes O(log n).
 
     - When it requires a large number of selectors, Chiquito employs an optimization to reduce the number of selectors to O(log n).
 
@@ -367,7 +441,7 @@ In Chiquito, several features contribute to the advantages of circuit developmen
 
    - By default, each step is placed in a single row, resulting in potentially long rows.
 
-    - Chiquito provides a [method](https://github.com/privacy-scaling-explorations/chiquito/blob/802615f734eb8cbf2e11c7a3716bc017e92488fa/src/plonkish/compiler/cell_manager.rs#L233-L366) to split a row into multiple rows, allowing for flexibility in defining the size of a row.
+    - Chiquito provides a [method](https://github.com/privacy-scaling-explorations/Chiquito/blob/802615f734eb8cbf2e11c7a3716bc017e92488fa/src/plonkish/compiler/cell_manager.rs#L233-L366) to split a row into multiple rows, allowing for flexibility in defining the size of a row.
 
 4. **Cell Number Optimization**
    
@@ -415,7 +489,7 @@ The Steps are split into two components: the first is the XOR operation for the 
 
     2. To reduce the circuit. It allocates cells in the last permutation phase, rather than allocate several new rows for the squeezing phase.
 
-#### 4.2 Keccak circuit data analysis
+#### 5.2 Keccak circuit data analysis
 
 We have analyzed the circuit, including the following key points:
 
@@ -439,11 +513,11 @@ We have analyzed the circuit, including the following key points:
 
     In the Chiquito version, it's divided into two parts: preprocessing and permutation stages (where the squeezing stage is also merged into the final permutation stage). Each round (including preprocessing) occupies 11 rows and 202 columns, except for the last 4 columns for the selector. In the preprocessing stage, there are a total of 591 witnesses, leaving 1587 idle cells. In the permutation stage, except for the last round, there are 2074 witnesses and 104 idle cells remaining. In the final permutation round, there are 2163 witnesses and only 15 idle cells left.
 
-### 5. Compare the difference
+### 6. Compare the difference
 
 In this chapter, we compare two versions of the Keccak circuit implementation. 
 
-#### 5.1 Different Design
+#### 6.1 Different Design
 
 First, let's begin by delineating some design differences between the two.
 
@@ -458,7 +532,7 @@ First, let's begin by delineating some design differences between the two.
 |7 |Lines of code | 2246 | 2323 |-|
 
 
-#### 5.2 Compare key parameters
+#### 6.2 Compare key parameters
 
 The following table provides a comparison of the numbers of key parameters between the two versions of circuit implementations using the input value [0, 1, 2, 3, 4, 5, 6, 7] as an example.
 
@@ -478,15 +552,15 @@ The following table provides a comparison of the numbers of key parameters betwe
 | 12 | Number of Rotations Used(instance) | 0 | 0 |
 | 13 | Number of Rotations Used(fixed) | 30 | 15 |
 
-##### 5.2.1 Witness Cells
+##### 6.2.1 Witness Cells
 
 In the Chiquito version, each step originally occupied one line and was then split into multiple lines, making it easy to save more idle cells. However, in the Taiko version, fewer expressions are used to constrain these witnesses, so relatively more idle witnesses have to be allocated.
 
-##### 5.2.2 Expression and Degree
+##### 6.2.2 Expression and Degree
 
 Due to differences in design details, there is a variation in the expression degree between the Chiquito version and the Taiko version. The Chiquito version has a higher expression degree primarily because it incorporates a selector optimization feature. In the examples, we require three fixed columns('q_enable', 'q_first', 'q_last') of advice as selectors. Additionally, there are three fundamental columns that need to be used for one or two columns in each expression. As a result, the Chiquito version requires the use of one more column. Moreover, the expressions in Lookups also necessitate two more columns (one for the 'q_enable' column and another for one of the four columns of advice used as step selector) in certain expressions.
 
-##### 5.2.3 Number of Constraints
+##### 6.2.3 Number of Constraints
 
 Here, it is evident that the Chiquito version has significantly more constraints and lookup queries compared to the Taiko version. This is due to several reasons:
 
@@ -498,7 +572,7 @@ Lastly, due to the design of Chiquito, constraints are only allowed to exist bet
 
 Lastly, it's crucial to note that although we've determined Chiquito requires more constraints, this doesn't introduce a higher degree. Moreover, relatively speaking, it reduces development difficulty without compromising the correctness of the constraints. Of course, we can theoretically reduce the number of constraints by reducing the step type
 
-##### 5.2.4 Rotations 
+##### 6.2.4 Rotations 
 
 For the Chiquito version, "Rotations" is utilized across a total of 202 columns of Advice, with each column undergoing rotations ranging from 9 to 12 times, with values ranging between 0 and 11.
 
@@ -542,13 +616,13 @@ The difference in the "Rotations" presentation between the Chiquito and Taiko ve
 
 Both versions occupy multiple consecutive rows in each round of computation, but the arrangement differs. This is due to Chiquito initially allocating all cells within a step to one row, before folding them. However, compared to the other version, Chiquito's version has fewer idle cells and a higher utilization rate of cells. 
 
-### 6. Conclusion
+### 7. Conclusion
 
 In conclusion, it is evident that developing circuits directly on halo2 is more native and straightforward. On the other hand, Chiquito, as an additional DSL layer, can theoretically implement all optimization strategies present in native circuits and offers code with enhanced readability. Moreover, Chiquito provides a simpler development interface and incorporates features such as selector optimization, row size collapse, and more. These inherent features in Chiquito significantly contribute to reducing development complexity.
 
 ### References
 
-* https://github.com/privacy-scaling-explorations/chiquito/tree/1788d7e7ba4f06e6ba8a4404bd6c43328f7e5e4f
+* https://github.com/privacy-scaling-explorations/Chiquito/tree/1788d7e7ba4f06e6ba8a4404bd6c43328f7e5e4f
 
 * https://github.com/taikoxyz/zkevm-circuits
 
